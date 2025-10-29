@@ -39,7 +39,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import JsBarcode from "jsbarcode";
 import QRCode from "qrcode";
-import { jsPDF } from "jspdf";
+import jsPDF from 'jspdf';
 import { apiService, type LabelTemplate } from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
 import type { Product } from "@/types/product";
