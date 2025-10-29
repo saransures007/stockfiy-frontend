@@ -76,6 +76,22 @@ export default function Suppliers() {
     "Beauty",
   ];
 
+  // Add this near the top of your component
+const formatAddress = (address: any) => {
+  if (!address) return "";
+  if (typeof address === "string") return address;
+  if (typeof address === "object") {
+    return (
+      address.full ||
+      [address.street, address.city, address.state, address.postalCode, address.country]
+        .filter(Boolean)
+        .join(", ")
+    );
+  }
+  return String(address);
+};
+
+
   // Fetch suppliers from API
   const fetchSuppliers = async () => {
     try {
@@ -719,7 +735,7 @@ export default function Suppliers() {
                         {supplier.address && (
                           <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
                             <MapPin className="h-4 w-4 flex-shrink-0" />
-                            <span className="truncate">{supplier.address}</span>
+                            <span className="truncate">{formatAddress(supplier.address)}</span>
                           </div>
                         )}
 
