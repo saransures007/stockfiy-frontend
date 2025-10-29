@@ -72,9 +72,10 @@ export default function SupplierSelect({
     try {
       setLoading(true);
       const response = await apiService.getSuppliers();
-      if (response.success && response.data && "data" in response) {
-        setSuppliers(response.data.data || []);
+      if (response.success && response.data) {
+        setSuppliers(response.data.suppliers || []);
       }
+
     } catch (error) {
       console.error("Error fetching suppliers:", error);
       toast({
@@ -101,9 +102,11 @@ export default function SupplierSelect({
           setCreateFormData((prev) => ({
             ...prev,
             category:
-              response.data.categories[0].name ||
-              response.data.categories[0]._id,
+              response.data?.categories?.[0]?.name ||
+              response.data?.categories?.[0]?._id ||
+              "",
           }));
+
         }
       }
     } catch (error) {
