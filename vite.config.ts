@@ -18,7 +18,7 @@ export default defineConfig(({ command }) => ({
       ? {
           proxy: {
             "/api": {
-              target: "http://localhost:5000",
+              target: "https://stockify-backend-gwaa.onrender.com",
               changeOrigin: true,
               secure: false,
             },
