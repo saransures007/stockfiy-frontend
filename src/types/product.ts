@@ -189,3 +189,65 @@ export interface ExtendedSupplier {
   lastOrderDate?: string;
   totalOrderValue?: number;
 }
+
+
+// types/product.ts - Add these types
+export interface CSVImportOptions {
+  preview?: boolean;
+  updateExisting?: boolean;
+  skipDuplicates?: boolean;
+}
+
+export interface CSVImportPreview {
+  preview: boolean;
+  summary: {
+    totalRows: number;
+    validProducts: number;
+    duplicateCount: number;
+    errorCount: number;
+  };
+  sampleProducts: Product[];
+  duplicates: Array<{
+    row: number;
+    product: Product;
+    reason: string;
+  }>;
+  errors: Array<{
+    row: number;
+    errors: string[];
+    data: any;
+  }>;
+  allProducts?: Product[];
+}
+
+export interface CSVImportResult {
+  summary: {
+    totalProcessed: number;
+    inserted: number;
+    updated: number;
+    failed: number;
+    duplicatesSkipped: number;
+  };
+  insertedProducts: Product[];
+  updatedProducts: Product[];
+  failedProducts: Array<{
+    product: Product;
+    reason: string;
+  }>;
+  errors: Array<{
+    row: number;
+    errors: string[];
+  }>;
+}
+
+export interface ImportHistory {
+  _id: {
+    date: string;
+  };
+  count: number;
+  products: Array<{
+    name: string;
+    sku: string;
+    createdAt: string;
+  }>;
+}

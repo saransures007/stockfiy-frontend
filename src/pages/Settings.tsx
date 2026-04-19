@@ -1,4 +1,5 @@
-import { useState } from 'react';
+// pages/Settings.tsx
+import { useState, useEffect } from 'react';
 import { InventoryLayout } from '@/layouts';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,10 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-// If your Tabs components are located elsewhere, update the import path accordingly.
-// For example, if they are in src/components/Tabs.tsx, use:
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-// Or, if the file does not exist, create src/components/ui/tabs.tsx and export the components.
+import { toast } from '@/components/ui/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Settings as SettingsIcon,
   User,
@@ -48,13 +48,84 @@ import {
   Camera,
   Smartphone,
   Laptop,
-  Tablet
+  Tablet,
+  Clock,
+  Calendar,
+  DollarSign,
+  Languages,
+  HelpCircle,
+  Power,
+  PowerOff
 } from 'lucide-react';
+import { apiService } from '@/lib/api';
+
+interface SettingsData {
+  general: {
+    companyName: string;
+    businessType: string;
+    currency: string;
+    timezone: string;
+    language: string;
+    dateFormat: string;
+    numberFormat: string;
+  };
+  storeStatus: {
+    isOpen: boolean;
+    openingTime: string;
+    closingTime: string;
+    holidayMode: boolean;
+    temporaryCloseReason: string;
+    lastStatusChange: string;
+  };
+  notifications: {
+    emailNotifications: boolean;
+    pushNotifications: boolean;
+    smsNotifications: boolean;
+    lowStockAlerts: boolean;
+    salesNotifications: boolean;
+    systemUpdates: boolean;
+    marketingEmails: boolean;
+    emailRecipients: string[];
+    smsNumbers: string[];
+  };
+  security: {
+    twoFactorAuth: boolean;
+    sessionTimeout: number;
+    passwordExpiry: number;
+    allowMultipleSessions: boolean;
+    ipRestriction: boolean;
+    allowedIPs: string[];
+  };
+  display: {
+    theme: string;
+    compactMode: boolean;
+    showAnimations: boolean;
+    highContrast: boolean;
+    fontSize: string;
+  };
+  print: {
+    defaultPrinter: string;
+    receiptSize: string;
+    copies: number;
+    headerText: string;
+    footerText: string;
+    showLogo: boolean;
+    showTaxDetails: boolean;
+  };
+  invoice: {
+    prefix: string;
+    startingNumber: number;
+    terms: string;
+    notes: string;
+  };
+}
 
 export default function Settings() {
   const { theme, setTheme, isDarkMode } = useTheme();
   const [activeTab, setActiveTab] = useState('general');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   
   // Settings state
   const [generalSettings, setGeneralSettings] = useState({
@@ -67,6 +138,15 @@ export default function Settings() {
     numberFormat: '1,234.56'
   });
 
+  const [storeStatus, setStoreStatus] = useState({
+    isOpen: true,
+    openingTime: '09:00',
+    closingTime: '21:00',
+    holidayMode: false,
+    temporaryCloseReason: '',
+    lastStatusChange: ''
+  });
+
   const [notificationSettings, setNotificationSettings] = useState({
     emailNotifications: true,
     pushNotifications: true,
@@ -74,7 +154,9 @@ export default function Settings() {
     lowStockAlerts: true,
     salesNotifications: true,
     systemUpdates: false,
-    marketingEmails: false
+    marketingEmails: false,
+    emailRecipients: ['admin@stockify.com'],
+    smsNumbers: []
   });
 
   const [securitySettings, setSecuritySettings] = useState({
@@ -82,7 +164,8 @@ export default function Settings() {
     sessionTimeout: 30,
     passwordExpiry: 90,
     allowMultipleSessions: true,
-    ipRestriction: false
+    ipRestriction: false,
+    allowedIPs: []
   });
 
   const [displaySettings, setDisplaySettings] = useState({
@@ -93,11 +176,65 @@ export default function Settings() {
     fontSize: 'medium'
   });
 
+  const [printSettings, setPrintSettings] = useState({
+    defaultPrinter: '',
+    receiptSize: '80mm',
+    copies: 1,
+    headerText: 'Thank you for shopping!',
+    footerText: 'Visit us again!',
+    showLogo: true,
+    showTaxDetails: true
+  });
+
+  const [invoiceSettings, setInvoiceSettings] = useState({
+    prefix: 'INV',
+    startingNumber: 1001,
+    terms: 'Payment due within 15 days',
+    notes: ''
+  });
+
+  // Load settings on mount
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    setLoading(true);
+    try {
+      const response = await apiService.getSettings();
+      if (response.success && response.data) {
+        const data = response.data;
+        
+        setGeneralSettings(data.general || generalSettings);
+        setStoreStatus(data.storeStatus || storeStatus);
+        setNotificationSettings(data.notifications || notificationSettings);
+        setSecuritySettings(data.security || securitySettings);
+        setDisplaySettings(data.display || displaySettings);
+        setPrintSettings(data.print || printSettings);
+        setInvoiceSettings(data.invoice || invoiceSettings);
+        
+        // Sync theme
+        if (data.display?.theme) {
+          setTheme(data.display.theme);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load settings. Using defaults.',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGeneralChange = (key: string, value: any) => {
     setGeneralSettings(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleNotificationChange = (key: string, value: boolean) => {
+  const handleNotificationChange = (key: string, value: any) => {
     setNotificationSettings(prev => ({ ...prev, [key]: value }));
   };
 
@@ -112,22 +249,130 @@ export default function Settings() {
     }
   };
 
-  const saveSettings = () => {
-    // Implement save functionality
-    console.log('Settings saved');
+  const handlePrintChange = (key: string, value: any) => {
+    setPrintSettings(prev => ({ ...prev, [key]: value }));
   };
+
+  const handleInvoiceChange = (key: string, value: any) => {
+    setInvoiceSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleStoreStatusChange = async (isOpen: boolean, reason?: string) => {
+    try {
+      const response = await apiService.updateStoreStatus(isOpen, reason);
+      if (response.success) {
+        setStoreStatus(response.data);
+        toast({
+          title: 'Store Status Updated',
+          description: `Store is now ${isOpen ? 'OPEN' : 'CLOSED'}`,
+          variant: isOpen ? 'default' : 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update store status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update store status',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const saveSettings = async (section: string) => {
+    setSaving(true);
+    try {
+      let response;
+      switch (section) {
+        case 'general':
+          response = await apiService.updateGeneralSettings(generalSettings);
+          break;
+        case 'notifications':
+          response = await apiService.updateNotificationSettings(notificationSettings);
+          break;
+        case 'security':
+          response = await apiService.updateSecuritySettings(securitySettings);
+          break;
+        case 'display':
+          response = await apiService.updateDisplaySettings(displaySettings);
+          break;
+        case 'print':
+          response = await apiService.updatePrintSettings(printSettings);
+          break;
+        case 'invoice':
+          response = await apiService.updateInvoiceSettings(invoiceSettings);
+          break;
+        default:
+          return;
+      }
+      
+      if (response.success) {
+        toast({
+          title: 'Success',
+          description: `${section.charAt(0).toUpperCase() + section.slice(1)} settings saved successfully`,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      toast({
+        title: 'Error',
+        description: `Failed to save ${section} settings`,
+        variant: 'destructive'
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resetSettings = async (section?: string) => {
+    if (!confirm(`Are you sure you want to reset ${section ? section : 'all'} settings?`)) return;
+    
+    try {
+      const response = await apiService.resetSettings(section);
+      if (response.success) {
+        await loadSettings();
+        toast({
+          title: 'Success',
+          description: `${section ? section : 'Settings'} reset to defaults`,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to reset settings:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to reset settings',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <InventoryLayout activeSection="Settings">
+        <div className="p-4 md:p-8">
+          <div className="max-w-7xl mx-auto space-y-6">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-96 w-full" />
+          </div>
+        </div>
+      </InventoryLayout>
+    );
+  }
 
   return (
     <InventoryLayout activeSection="Settings">
       <div className="p-4 md:p-8 bg-background min-h-screen">
         <div className="max-w-7xl mx-auto space-y-8">
           
-          {/* Enhanced Header */}
-          <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-2xl border border-border p-6 md:p-8">
+          {/* Enhanced Header with Store Status */}
+          <div className={`bg-gradient-to-r ${storeStatus.isOpen ? 'from-green-500/20 via-green-500/10' : 'from-red-500/20 via-red-500/10'} to-transparent rounded-2xl border border-border p-6 md:p-8`}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/80 rounded-2xl flex items-center justify-center shadow-lg">
-                  <SettingsIcon className="h-8 w-8 text-primary-foreground" />
+                <div className={`w-16 h-16 bg-gradient-to-br ${storeStatus.isOpen ? 'from-green-500 to-green-600' : 'from-red-500 to-red-600'} rounded-2xl flex items-center justify-center shadow-lg`}>
+                  {storeStatus.isOpen ? (
+                    <Power className="h-8 w-8 text-white" />
+                  ) : (
+                    <PowerOff className="h-8 w-8 text-white" />
+                  )}
                 </div>
                 <div>
                   <h1 className="text-3xl md:text-4xl font-bold text-foreground">
@@ -136,30 +381,51 @@ export default function Settings() {
                   <p className="text-muted-foreground text-lg mt-2">
                     Customize your Stockify experience and manage your account
                   </p>
-                  <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      System Healthy
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      Auto-save Enabled
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                      Cloud Synced
-                    </span>
+                  <div className="flex items-center gap-4 mt-3 text-sm">
+                    <Badge variant={storeStatus.isOpen ? 'default' : 'destructive'} className="gap-2">
+                      {storeStatus.isOpen ? (
+                        <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
+                      ) : (
+                        <div className="w-2 h-2 bg-red-300 rounded-full" />
+                      )}
+                      {storeStatus.isOpen ? 'Store Open' : 'Store Closed'}
+                    </Badge>
+                    {storeStatus.isOpen && storeStatus.openingTime && (
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <Clock className="h-4 w-4" />
+                        {storeStatus.openingTime} - {storeStatus.closingTime}
+                      </span>
+                    )}
+                    {!storeStatus.isOpen && storeStatus.temporaryCloseReason && (
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <AlertTriangle className="h-4 w-4" />
+                        {storeStatus.temporaryCloseReason}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button variant="outline" className="bg-card hover:bg-accent">
+                <Button 
+                  variant={storeStatus.isOpen ? "destructive" : "default"}
+                  onClick={() => handleStoreStatusChange(!storeStatus.isOpen)}
+                  className={storeStatus.isOpen ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"}
+                >
+                  {storeStatus.isOpen ? (
+                    <>
+                      <PowerOff className="h-4 w-4 mr-2" />
+                      Close Store
+                    </>
+                  ) : (
+                    <>
+                      <Power className="h-4 w-4 mr-2" />
+                      Open Store
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={() => resetSettings()}>
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Reset All
-                </Button>
-                <Button onClick={saveSettings} className="bg-primary hover:bg-primary/90">
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Changes
                 </Button>
               </div>
             </div>
@@ -167,7 +433,7 @@ export default function Settings() {
 
           {/* Settings Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto p-1 bg-muted/50">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-7 h-auto p-1 bg-muted/50">
               <TabsTrigger value="general" className="flex items-center gap-2 py-3">
                 <Store className="h-4 w-4" />
                 <span className="hidden sm:inline">General</span>
@@ -183,6 +449,14 @@ export default function Settings() {
               <TabsTrigger value="display" className="flex items-center gap-2 py-3">
                 <Palette className="h-4 w-4" />
                 <span className="hidden sm:inline">Display</span>
+              </TabsTrigger>
+              <TabsTrigger value="print" className="flex items-center gap-2 py-3">
+                <Printer className="h-4 w-4" />
+                <span className="hidden sm:inline">Print</span>
+              </TabsTrigger>
+              <TabsTrigger value="invoice" className="flex items-center gap-2 py-3">
+                <CreditCard className="h-4 w-4" />
+                <span className="hidden sm:inline">Invoice</span>
               </TabsTrigger>
               <TabsTrigger value="advanced" className="flex items-center gap-2 py-3">
                 <Database className="h-4 w-4" />
@@ -263,6 +537,12 @@ export default function Settings() {
                         </select>
                       </div>
                     </div>
+                    <div className="flex justify-end pt-4">
+                      <Button onClick={() => saveSettings('general')} disabled={saving}>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -320,39 +600,10 @@ export default function Settings() {
                         <option value="1 234.56">1 234.56</option>
                       </select>
                     </div>
-                  </CardContent>
-                </Card>
-
-                {/* Quick Actions */}
-                <Card className="bg-card border-border lg:col-span-2">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
-                        <Zap className="h-5 w-5 text-purple-500" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-foreground">Quick Actions</CardTitle>
-                        <CardDescription>Common settings and tools</CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2 bg-card hover:bg-accent">
-                        <Package className="h-6 w-6 text-blue-500" />
-                        <span className="text-sm">Inventory Settings</span>
-                      </Button>
-                      <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2 bg-card hover:bg-accent">
-                        <Printer className="h-6 w-6 text-green-500" />
-                        <span className="text-sm">Print Setup</span>
-                      </Button>
-                      <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2 bg-card hover:bg-accent">
-                        <Barcode className="h-6 w-6 text-orange-500" />
-                        <span className="text-sm">Barcode Config</span>
-                      </Button>
-                      <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2 bg-card hover:bg-accent">
-                        <TrendingUp className="h-6 w-6 text-purple-500" />
-                        <span className="text-sm">Reports Setup</span>
+                    <div className="flex justify-end pt-4">
+                      <Button onClick={() => saveSettings('general')} disabled={saving}>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
                       </Button>
                     </div>
                   </CardContent>
@@ -420,6 +671,12 @@ export default function Settings() {
                         onCheckedChange={(checked) => handleNotificationChange('smsNotifications', checked)}
                       />
                     </div>
+                    <div className="flex justify-end pt-4">
+                      <Button onClick={() => saveSettings('notifications')} disabled={saving}>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -478,6 +735,12 @@ export default function Settings() {
                         onCheckedChange={(checked) => handleNotificationChange('systemUpdates', checked)}
                       />
                     </div>
+                    <div className="flex justify-end pt-4">
+                      <Button onClick={() => saveSettings('notifications')} disabled={saving}>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -533,6 +796,12 @@ export default function Settings() {
                         className="bg-background"
                       />
                     </div>
+                    <div className="flex justify-end pt-4">
+                      <Button onClick={() => saveSettings('security')} disabled={saving}>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -572,30 +841,11 @@ export default function Settings() {
                       />
                     </div>
 
-                    <div className="space-y-3 pt-4 border-t border-border">
-                      <h4 className="font-medium text-foreground">Active Sessions</h4>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <Laptop className="h-5 w-5 text-muted-foreground" />
-                            <div>
-                              <p className="font-medium text-foreground">Current Session</p>
-                              <p className="text-sm text-muted-foreground">Windows • Chrome • 192.168.1.1</p>
-                            </div>
-                          </div>
-                          <Badge variant="secondary">Active</Badge>
-                        </div>
-                        <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <Smartphone className="h-5 w-5 text-muted-foreground" />
-                            <div>
-                              <p className="font-medium text-foreground">Mobile App</p>
-                              <p className="text-sm text-muted-foreground">iOS • Safari • 2 hours ago</p>
-                            </div>
-                          </div>
-                          <Button variant="outline" size="sm">Revoke</Button>
-                        </div>
-                      </div>
+                    <div className="flex justify-end pt-4">
+                      <Button onClick={() => saveSettings('security')} disabled={saving}>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -632,13 +882,13 @@ export default function Settings() {
                             key={key}
                             onClick={() => handleDisplayChange('theme', key)}
                             className={`p-4 rounded-xl border-2 transition-all hover:border-primary/50 ${
-                              theme === key
+                              displaySettings.theme === key
                                 ? 'border-primary bg-primary/5'
                                 : 'border-border hover:bg-accent'
                             }`}
                           >
                             <Icon className={`h-6 w-6 mx-auto mb-2 ${
-                              theme === key ? 'text-primary' : 'text-muted-foreground'
+                              displaySettings.theme === key ? 'text-primary' : 'text-muted-foreground'
                             }`} />
                             <div className="text-sm font-medium">{label}</div>
                           </button>
@@ -666,6 +916,12 @@ export default function Settings() {
                         checked={displaySettings.showAnimations}
                         onCheckedChange={(checked) => handleDisplayChange('showAnimations', checked)}
                       />
+                    </div>
+                    <div className="flex justify-end pt-4">
+                      <Button onClick={() => saveSettings('display')} disabled={saving}>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -710,21 +966,178 @@ export default function Settings() {
                       />
                     </div>
                     
-                    <div className="space-y-3 pt-4 border-t border-border">
-                      <h4 className="font-medium text-foreground">Preview</h4>
-                      <div className="p-4 bg-muted/30 rounded-lg space-y-2">
-                        <h5 className="font-semibold text-foreground">Sample Text</h5>
-                        <p className="text-muted-foreground">This is how text will appear with your current settings.</p>
-                        <div className="flex gap-2">
-                          <Badge>Primary</Badge>
-                          <Badge variant="secondary">Secondary</Badge>
-                          <Badge variant="outline">Outline</Badge>
-                        </div>
-                      </div>
+                    <div className="flex justify-end pt-4">
+                      <Button onClick={() => saveSettings('display')} disabled={saving}>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
               </div>
+            </TabsContent>
+
+            {/* Print Settings */}
+            <TabsContent value="print" className="space-y-6">
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
+                      <Printer className="h-5 w-5 text-purple-500" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-foreground">Print Settings</CardTitle>
+                      <CardDescription>Configure your receipt and label printing preferences</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="defaultPrinter">Default Printer</Label>
+                      <Input
+                        id="defaultPrinter"
+                        value={printSettings.defaultPrinter}
+                        onChange={(e) => handlePrintChange('defaultPrinter', e.target.value)}
+                        placeholder="Enter printer name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="receiptSize">Receipt Size</Label>
+                      <select
+                        id="receiptSize"
+                        value={printSettings.receiptSize}
+                        onChange={(e) => handlePrintChange('receiptSize', e.target.value)}
+                        className="w-full px-3 py-2 bg-background border border-border rounded-md"
+                      >
+                        <option value="58mm">58mm (Thermal)</option>
+                        <option value="80mm">80mm (Standard)</option>
+                        <option value="A4">A4 (Laser/Inkjet)</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="copies">Number of Copies</Label>
+                      <Input
+                        id="copies"
+                        type="number"
+                        min="1"
+                        max="5"
+                        value={printSettings.copies}
+                        onChange={(e) => handlePrintChange('copies', parseInt(e.target.value))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <span className="font-medium text-foreground">Show Logo</span>
+                        <p className="text-sm text-muted-foreground">Display company logo on receipts</p>
+                      </div>
+                      <Switch
+                        checked={printSettings.showLogo}
+                        onCheckedChange={(checked) => handlePrintChange('showLogo', checked)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <span className="font-medium text-foreground">Show Tax Details</span>
+                        <p className="text-sm text-muted-foreground">Display tax breakdown on receipts</p>
+                      </div>
+                      <Switch
+                        checked={printSettings.showTaxDetails}
+                        onCheckedChange={(checked) => handlePrintChange('showTaxDetails', checked)}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="headerText">Receipt Header</Label>
+                    <Input
+                      id="headerText"
+                      value={printSettings.headerText}
+                      onChange={(e) => handlePrintChange('headerText', e.target.value)}
+                      placeholder="Thank you for shopping!"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="footerText">Receipt Footer</Label>
+                    <Input
+                      id="footerText"
+                      value={printSettings.footerText}
+                      onChange={(e) => handlePrintChange('footerText', e.target.value)}
+                      placeholder="Visit us again!"
+                    />
+                  </div>
+                  <div className="flex justify-end pt-4">
+                    <Button onClick={() => saveSettings('print')} disabled={saving}>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Print Settings
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Invoice Settings */}
+            <TabsContent value="invoice" className="space-y-6">
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                      <CreditCard className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-foreground">Invoice Settings</CardTitle>
+                      <CardDescription>Configure your invoice numbering and terms</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="prefix">Invoice Prefix</Label>
+                      <Input
+                        id="prefix"
+                        value={invoiceSettings.prefix}
+                        onChange={(e) => handleInvoiceChange('prefix', e.target.value)}
+                        placeholder="INV"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="startingNumber">Starting Number</Label>
+                      <Input
+                        id="startingNumber"
+                        type="number"
+                        value={invoiceSettings.startingNumber}
+                        onChange={(e) => handleInvoiceChange('startingNumber', parseInt(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="terms">Payment Terms</Label>
+                    <Input
+                      id="terms"
+                      value={invoiceSettings.terms}
+                      onChange={(e) => handleInvoiceChange('terms', e.target.value)}
+                      placeholder="Payment due within 15 days"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Default Notes</Label>
+                    <textarea
+                      id="notes"
+                      value={invoiceSettings.notes}
+                      onChange={(e) => handleInvoiceChange('notes', e.target.value)}
+                      className="w-full px-3 py-2 bg-background border border-border rounded-md"
+                      rows={3}
+                      placeholder="Additional notes for customers..."
+                    />
+                  </div>
+                  <div className="flex justify-end pt-4">
+                    <Button onClick={() => saveSettings('invoice')} disabled={saving}>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Invoice Settings
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             {/* Advanced Settings */}
@@ -745,22 +1158,23 @@ export default function Settings() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <Button variant="outline" className="w-full justify-start bg-card hover:bg-accent">
+                    <Button variant="outline" className="w-full justify-start" onClick={() => apiService.exportProductsToCSV()}>
                       <Download className="h-4 w-4 mr-2" />
                       Export All Data
                     </Button>
-                    <Button variant="outline" className="w-full justify-start bg-card hover:bg-accent">
+                    <Button variant="outline" className="w-full justify-start" onClick={() => document.getElementById('csv-import')?.click()}>
                       <Upload className="h-4 w-4 mr-2" />
                       Import Data
                     </Button>
-                    <Button variant="outline" className="w-full justify-start bg-card hover:bg-accent">
+                    <input id="csv-import" type="file" accept=".csv" className="hidden" />
+                    <Button variant="outline" className="w-full justify-start">
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Backup Database
                     </Button>
                     <Separator />
-                    <Button variant="destructive" className="w-full justify-start">
+                    <Button variant="destructive" className="w-full justify-start" onClick={() => resetSettings()}>
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Clear All Data
+                      Reset All Settings
                     </Button>
                   </CardContent>
                 </Card>

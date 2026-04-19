@@ -201,6 +201,9 @@ export interface RegisterRequest {
 
 // API service class
 class ApiService {
+    getTrendingProductRequests() {
+        throw new Error('Method not implemented.');
+    }
   private baseURL: string;
 
   constructor(baseURL: string) {
@@ -265,6 +268,73 @@ class ApiService {
       throw error;
     }
   }
+
+  // Add to your apiService
+async getSettings(): Promise<ApiResponse<any>> {
+    return this.request('/settings', { method: 'GET' });
+}
+
+async updateGeneralSettings(data: any): Promise<ApiResponse<any>> {
+    return this.request('/settings/general', { 
+        method: 'PUT',
+        body: JSON.stringify(data)
+    });
+}
+
+async updateStoreStatus(isOpen: boolean, reason?: string): Promise<ApiResponse<any>> {
+    return this.request('/settings/store-status', { 
+        method: 'PUT',
+        body: JSON.stringify({ isOpen, reason })
+    });
+}
+
+async getStoreStatus(): Promise<ApiResponse<any>> {
+    return this.request('/settings/store-status', { method: 'GET' });
+}
+
+async updateNotificationSettings(data: any): Promise<ApiResponse<any>> {
+    return this.request('/settings/notifications', { 
+        method: 'PUT',
+        body: JSON.stringify(data)
+    });
+}
+
+async updateSecuritySettings(data: any): Promise<ApiResponse<any>> {
+    return this.request('/settings/security', { 
+        method: 'PUT',
+        body: JSON.stringify(data)
+    });
+}
+
+async updateDisplaySettings(data: any): Promise<ApiResponse<any>> {
+    return this.request('/settings/display', { 
+        method: 'PUT',
+        body: JSON.stringify(data)
+    });
+}
+
+async resetSettings(section?: string): Promise<ApiResponse<any>> {
+    return this.request('/settings/reset', { 
+        method: 'POST',
+        body: JSON.stringify({ section })
+    });
+}
+
+
+async updatePrintSettings(data: any): Promise<ApiResponse<any>> {
+    return this.request('/settings/print', { 
+        method: 'PUT',
+        body: JSON.stringify(data)
+    });
+}
+
+async updateInvoiceSettings(data: any): Promise<ApiResponse<any>> {
+    return this.request('/settings/invoice', { 
+        method: 'PUT',
+        body: JSON.stringify(data)
+    });
+}
+
 
   // Authentication methods
   async login(credentials: LoginRequest): Promise<ApiResponse> {
@@ -456,6 +526,200 @@ class ApiService {
       method: "DELETE",
     });
   }
+
+
+
+  // =====================================================
+  // CSV IMPORT API METHODS
+  // =====================================================
+
+  /**
+   * Upload and process CSV file for product import
+   */
+  async importCSV(
+    file: File,
+    options: CSVImportOptions = {}
+  ): Promise<ApiResponse<CSVImportPreview | CSVImportResult>> {
+    const formData = new FormData();
+    formData.append('csvFile', file);
+
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    if (options.preview !== undefined) {
+      queryParams.append('preview', String(options.preview));
+    }
+    if (options.updateExisting !== undefined) {
+      queryParams.append('updateExisting', String(options.updateExisting));
+    }
+    if (options.skipDuplicates !== undefined) {
+      queryParams.append('skipDuplicates', String(options.skipDuplicates));
+    }
+
+    const queryString = queryParams.toString();
+    const endpoint = `/csv-import/upload${queryString ? `?${queryString}` : ''}`;
+
+    return this.request(endpoint, {
+      method: 'POST',
+      body: formData,
+      // Don't set Content-Type, let browser set it for FormData
+      headers: undefined,
+    });
+  }
+
+  /**
+   * Get CSV template structure
+   */
+  async getCSVTemplate(): Promise<ApiResponse<{
+    template: Record<string, any>[];
+    requiredFields: string[];
+    optionalFields: string[];
+  }>> {
+    return this.request('/csv-import/template', {
+      method: 'GET',
+    });
+  }
+
+  /**
+   * Download CSV template file
+   */
+  async downloadCSVTemplate(): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseURL}/csv-import/template/download`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to download template');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'product_import_template.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Template download error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get CSV import history
+   */
+  async getCSVImportHistory(): Promise<ApiResponse<ImportHistory[]>> {
+    return this.request('/csv-import/history', {
+      method: 'GET',
+    });
+  }
+
+  // =====================================================
+  // BULK PRODUCT OPERATIONS
+  // =====================================================
+
+  /**
+   * Bulk delete products
+   */
+  async bulkDeleteProducts(productIds: string[]): Promise<ApiResponse<{
+    deletedCount: number;
+    failedCount: number;
+    failedIds?: string[];
+  }>> {
+    return this.request('/products/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ productIds }),
+    });
+  }
+
+  /**
+   * Bulk update products
+   */
+  async bulkUpdateProducts(updates: Array<{
+    id: string;
+    updates: Partial<CreateProductRequest>;
+  }>): Promise<ApiResponse<{
+    updatedCount: number;
+    failedCount: number;
+    failedUpdates?: Array<{ id: string; reason: string }>;
+  }>> {
+    return this.request('/products/bulk-update', {
+      method: 'POST',
+      body: JSON.stringify({ updates }),
+    });
+  }
+
+  /**
+   * Bulk update stock levels
+   */
+  async bulkUpdateStock(updates: Array<{
+    productId: string;
+    quantity: number;
+    operation: 'set' | 'add' | 'subtract';
+  }>): Promise<ApiResponse<{
+    updatedCount: number;
+    failedCount: number;
+    failedUpdates?: Array<{ productId: string; reason: string }>;
+  }>> {
+    return this.request('/products/bulk-stock-update', {
+      method: 'POST',
+      body: JSON.stringify({ updates }),
+    });
+  }
+
+  /**
+   * Export products to CSV
+   */
+  async exportProductsToCSV(filters?: ProductFilters): Promise<void> {
+    const queryParams = new URLSearchParams();
+    
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+
+    const queryString = queryParams.toString();
+    const endpoint = `/products/export${queryString ? `?${queryString}` : ''}`;
+
+    try {
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to export products');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `products_export_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export error:', error);
+      throw error;
+    }
+  }
+
 
   // =====================================================
   // SUPPLIERS API METHODS
@@ -1131,6 +1395,70 @@ class ApiService {
   }
 }
 
+// Add these methods to your ApiService class inside lib/api.ts
+
+// Add this interface for CSV import
+export interface CSVImportOptions {
+  preview?: boolean;
+  updateExisting?: boolean;
+  skipDuplicates?: boolean;
+}
+
+export interface CSVImportPreview {
+  preview: boolean;
+  summary: {
+    totalRows: number;
+    validProducts: number;
+    duplicateCount: number;
+    errorCount: number;
+  };
+  sampleProducts: Product[];
+  duplicates: Array<{
+    row: number;
+    product: Product;
+    reason: string;
+  }>;
+  errors: Array<{
+    row: number;
+    errors: string[];
+    data: any;
+  }>;
+  allProducts?: Product[];
+}
+
+export interface CSVImportResult {
+  summary: {
+    totalProcessed: number;
+    inserted: number;
+    updated: number;
+    failed: number;
+    duplicatesSkipped: number;
+  };
+  insertedProducts: Product[];
+  updatedProducts: Product[];
+  failedProducts: Array<{
+    product: Product;
+    reason: string;
+  }>;
+  errors: Array<{
+    row: number;
+    errors: string[];
+  }>;
+}
+
+export interface ImportHistory {
+  _id: {
+    date: string;
+  };
+  count: number;
+  products: Array<{
+    name: string;
+    sku: string;
+    createdAt: string;
+  }>;
+}
+
+
 // Create and export API service instance
 export const apiService = new ApiService(API_BASE_URL);
 
@@ -1150,3 +1478,7 @@ export const isAuthenticated = () => {
 export const getCurrentUser = () => {
   return apiService.getUserData();
 };
+
+
+//----
+

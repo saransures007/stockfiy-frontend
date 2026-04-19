@@ -11,9 +11,10 @@ import {
   AlertTriangle,
   Upload,
   CheckCircle,
+  Table,
   RefreshCw,
 } from "lucide-react";
-
+import CSVImport from './CSVImport';
 import { apiService } from "@/lib/api";
 
 interface QuickAddProductProps {
@@ -42,7 +43,8 @@ const QuickAddProduct: React.FC<QuickAddProductProps> = ({
       email: "",
     },
   });
-
+  const [showCSVImport, setShowCSVImport] = useState(false);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -238,7 +240,7 @@ const QuickAddProduct: React.FC<QuickAddProductProps> = ({
       <DialogHeader>
         <DialogTitle className="flex items-center space-x-2">
           <Package className="h-5 w-5 text-blue-600" />
-          <span>Add New Product</span>
+          <span>Add New Products</span>
         </DialogTitle>
       </DialogHeader>
 
@@ -249,6 +251,36 @@ const QuickAddProduct: React.FC<QuickAddProductProps> = ({
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
+
+     <Card className="border-green-200 bg-gradient-to-r from-green-50 to-emerald-50">
+        <CardHeader>
+          <CardTitle className="flex items-center text-green-800">
+            <Table className="h-5 w-5 mr-2" />
+            Bulk Import from CSV
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Button 
+            onClick={() => setShowCSVImport(true)}
+            className="w-full bg-green-600 hover:bg-green-700"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Import CSV File
+          </Button>
+          <p className="text-sm text-green-700 mt-2 text-center">
+            Import multiple products at once using CSV format
+          </p>
+        </CardContent>
+      </Card>
+{/* CSV Import Dialog - FIXED: Use onOpenChange instead of onClose */}
+<CSVImport
+  open={showCSVImport}
+  onOpenChange={setShowCSVImport}  // Changed from onClose to onOpenChange
+  onSuccess={() => {
+    setShowCSVImport(false);
+    if (onSuccess) onSuccess();
+  }}
+/>
 
         {/* PDF Import Section */}
         <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">

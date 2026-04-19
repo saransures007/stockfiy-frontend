@@ -11,8 +11,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  
 } from "@/components/ui/dialog";
 import { apiService } from "@/lib/api";
+import CSVImport from './CSVImport';
+
+
 import { useToast } from "@/hooks/useToast";
 import type { CreateProductRequest, Supplier } from "@/types/product";
 import SupplierSelect from "@/components/common/SupplierSelect";
@@ -30,6 +34,7 @@ import {
   Upload,
   CheckCircle,
   Bug,
+  Table,
 } from "lucide-react";
 
 interface AddProductFormProps {
@@ -48,7 +53,8 @@ export default function AddProductForm({
   // PDF Import Modal State
   const [isPDFImportOpen, setIsPDFImportOpen] = useState(false);
   const [isDebugOpen, setIsDebugOpen] = useState(false);
-
+  const [showCSVImport, setShowCSVImport] = useState(false);
+  
   const [formData, setFormData] = useState<CreateProductRequest>({
     name: "",
     description: "",
@@ -547,6 +553,38 @@ export default function AddProductForm({
               </div>
             </Alert>
           )}
+
+               <Card className="border-green-200 bg-gradient-to-r from-green-50 to-emerald-50">
+        <CardHeader>
+          <CardTitle className="flex items-center text-green-800">
+            <Table className="h-5 w-5 mr-2" />
+            Bulk Import from CSV
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Button 
+            onClick={() => setShowCSVImport(true)}
+            className="w-full bg-green-600 hover:bg-green-700"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Import CSV File
+          </Button>
+          <p className="text-sm text-green-700 mt-2 text-center">
+            Import multiple products at once using CSV format
+          </p>
+        </CardContent>
+      </Card>
+{/* CSV Import Dialog - FIXED: Use onOpenChange instead of onClose */}
+<CSVImport
+  open={showCSVImport}
+  onOpenChange={setShowCSVImport}  // Changed from onClose to onOpenChange
+  onSuccess={() => {
+    setShowCSVImport(false);
+    if (onSuccess) {
+      onSuccess({});
+    }
+  }}
+/>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* PDF Import Section */}
