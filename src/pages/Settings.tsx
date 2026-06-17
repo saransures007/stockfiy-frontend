@@ -70,7 +70,6 @@ interface SettingsData {
     numberFormat: string;
   };
   storeStatus: {
-    isOpen: boolean;
     openingTime: string;
     closingTime: string;
     holidayMode: boolean;
@@ -138,14 +137,13 @@ export default function Settings() {
     numberFormat: '1,234.56'
   });
 
-  const [storeStatus, setStoreStatus] = useState({
-    isOpen: true,
-    openingTime: '09:00',
-    closingTime: '21:00',
-    holidayMode: false,
-    temporaryCloseReason: '',
-    lastStatusChange: ''
-  });
+const [storeStatus, setStoreStatus] = useState({
+  openingTime: '09:00',
+  closingTime: '21:00',
+  holidayMode: false,
+  temporaryCloseReason: '',
+  lastStatusChange: ''
+});
 
   const [notificationSettings, setNotificationSettings] = useState({
     emailNotifications: true,
@@ -257,34 +255,30 @@ export default function Settings() {
     setInvoiceSettings(prev => ({ ...prev, [key]: value }));
   };
 
-const handleStoreStatusChange = async (
-  isOpen: boolean
-) => {
-  try {
-    const response =
-      await apiService.updateStoreStatus({
-        ...storeStatus,
-        isOpen
-      });
 
-    if (response.success) {
-      setStoreStatus(response.data);
+const isOpen = (() => {
+  if (storeStatus.holidayMode) return false;
 
-      toast({
-        title: "Store Status Updated",
-        description: `Store is now ${
-          isOpen ? "OPEN" : "CLOSED"
-        }`,
-      });
-    }
-  } catch (error) {
-    toast({
-      title: "Error",
-      description: "Failed to update store status",
-      variant: "destructive",
-    });
-  }
-};
+  const now = new Date();
+
+  const currentMinutes =
+    now.getHours() * 60 + now.getMinutes();
+
+  const [oh, om] =
+    storeStatus.openingTime.split(':').map(Number);
+
+  const [ch, cm] =
+    storeStatus.closingTime.split(':').map(Number);
+
+  const openMinutes = oh * 60 + om;
+  const closeMinutes = ch * 60 + cm;
+
+  return (
+    currentMinutes >= openMinutes &&
+    currentMinutes < closeMinutes
+  );
+})();
+
 
   const saveSettings = async (section: string) => {
     setSaving(true);
@@ -373,11 +367,11 @@ const handleStoreStatusChange = async (
         
           
           {/* Enhanced Header with Store Status */}
-          <div className={`bg-gradient-to-r ${storeStatus.isOpen ? 'from-green-500/20 via-green-500/10' : 'from-red-500/20 via-red-500/10'} to-transparent rounded-2xl border border-border p-6 md:p-8`}>
+          <div className={`bg-gradient-to-r ${isOpen ? 'from-green-500/20 via-green-500/10' : 'from-red-500/20 via-red-500/10'} to-transparent rounded-2xl border border-border p-6 md:p-8`}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className={`w-16 h-16 bg-gradient-to-br ${storeStatus.isOpen ? 'from-green-500 to-green-600' : 'from-red-500 to-red-600'} rounded-2xl flex items-center justify-center shadow-lg`}>
-                  {storeStatus.isOpen ? (
+                <div className={`w-16 h-16 bg-gradient-to-br ${isOpen ? 'from-green-500 to-green-600' : 'from-red-500 to-red-600'} rounded-2xl flex items-center justify-center shadow-lg`}>
+                  {isOpen ? (
                     <Power className="h-8 w-8 text-white" />
                   ) : (
                     <PowerOff className="h-8 w-8 text-white" />
@@ -391,21 +385,21 @@ const handleStoreStatusChange = async (
                     Customize your Stockify experience and manage your account
                   </p>
                   <div className="flex items-center gap-4 mt-3 text-sm">
-                    <Badge variant={storeStatus.isOpen ? 'default' : 'destructive'} className="gap-2">
-                      {storeStatus.isOpen ? (
+                    <Badge variant={isOpen ? 'default' : 'destructive'} className="gap-2">
+                      {isOpen ? (
                         <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
                       ) : (
                         <div className="w-2 h-2 bg-red-300 rounded-full" />
                       )}
-                      {storeStatus.isOpen ? 'Store Open' : 'Store Closed'}
+                      {isOpen ? 'Store Open' : 'Store Closed'}
                     </Badge>
-                    {storeStatus.isOpen && storeStatus.openingTime && (
+                    {isOpen && storeStatus.openingTime && (
                       <span className="flex items-center gap-2 text-muted-foreground">
                         <Clock className="h-4 w-4" />
                         {storeStatus.openingTime} - {storeStatus.closingTime}
                       </span>
                     )}
-                    {!storeStatus.isOpen && storeStatus.temporaryCloseReason && (
+                    {!isOpen && storeStatus.temporaryCloseReason && (
                       <span className="flex items-center gap-2 text-muted-foreground">
                         <AlertTriangle className="h-4 w-4" />
                         {storeStatus.temporaryCloseReason}
@@ -415,12 +409,12 @@ const handleStoreStatusChange = async (
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button 
-                  variant={storeStatus.isOpen ? "destructive" : "default"}
-                  onClick={() => handleStoreStatusChange(!storeStatus.isOpen)}
-                  className={storeStatus.isOpen ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"}
+                {/* <Button 
+                  variant={isOpen ? "destructive" : "default"}
+                  onClick={() => handleStoreStatusChange(!isOpen)}
+                  className={isOpen ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"}
                 >
-                  {storeStatus.isOpen ? (
+                  {isOpen ? (
                     <>
                       <PowerOff className="h-4 w-4 mr-2" />
                       Close Store
@@ -435,7 +429,7 @@ const handleStoreStatusChange = async (
                 <Button variant="outline" onClick={() => resetSettings()}>
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Reset All
-                </Button>
+                </Button> */}
               </div>
             </div>
           </div>
@@ -529,7 +523,7 @@ const handleStoreStatusChange = async (
       />
     </div>
 
-    {!storeStatus.isOpen && (
+    {!isOpen && (
       <Input
         placeholder="Reason for closing"
         value={storeStatus.temporaryCloseReason}
@@ -544,8 +538,13 @@ const handleStoreStatusChange = async (
 
     <Button
       onClick={async () => {
-        await apiService.updateStoreStatus(storeStatus);
-
+      await apiService.updateStoreStatus({
+        openingTime: storeStatus.openingTime,
+        closingTime: storeStatus.closingTime,
+        holidayMode: storeStatus.holidayMode,
+        temporaryCloseReason:
+          storeStatus.temporaryCloseReason
+      });
         toast({
           title: "Success",
           description: "Store hours updated"
