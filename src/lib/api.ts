@@ -281,11 +281,17 @@ async updateGeneralSettings(data: any): Promise<ApiResponse<any>> {
     });
 }
 
-async updateStoreStatus(isOpen: boolean, reason?: string): Promise<ApiResponse<any>> {
-    return this.request('/settings/store-status', { 
-        method: 'PUT',
-        body: JSON.stringify({ isOpen, reason })
-    });
+async updateStoreStatus(data: {
+  isOpen?: boolean;
+  openingTime?: string;
+  closingTime?: string;
+  holidayMode?: boolean;
+  temporaryCloseReason?: string;
+}): Promise<ApiResponse<any>> {
+  return this.request('/settings/store-status', {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  });
 }
 
 async getStoreStatus(): Promise<ApiResponse<any>> {
