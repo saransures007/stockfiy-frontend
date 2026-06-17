@@ -257,26 +257,34 @@ export default function Settings() {
     setInvoiceSettings(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleStoreStatusChange = async (isOpen: boolean, reason?: string) => {
-    try {
-      const response = await apiService.updateStoreStatus(isOpen, reason);
-      if (response.success) {
-        setStoreStatus(response.data);
-        toast({
-          title: 'Store Status Updated',
-          description: `Store is now ${isOpen ? 'OPEN' : 'CLOSED'}`,
-          variant: isOpen ? 'default' : 'destructive'
-        });
-      }
-    } catch (error) {
-      console.error('Failed to update store status:', error);
+const handleStoreStatusChange = async (
+  isOpen: boolean
+) => {
+  try {
+    const response =
+      await apiService.updateStoreStatus({
+        ...storeStatus,
+        isOpen
+      });
+
+    if (response.success) {
+      setStoreStatus(response.data);
+
       toast({
-        title: 'Error',
-        description: 'Failed to update store status',
-        variant: 'destructive'
+        title: "Store Status Updated",
+        description: `Store is now ${
+          isOpen ? "OPEN" : "CLOSED"
+        }`,
       });
     }
-  };
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Failed to update store status",
+      variant: "destructive",
+    });
+  }
+};
 
   const saveSettings = async (section: string) => {
     setSaving(true);
@@ -362,6 +370,7 @@ export default function Settings() {
     <InventoryLayout activeSection="Settings">
       <div className="p-4 md:p-8 bg-background min-h-screen">
         <div className="max-w-7xl mx-auto space-y-8">
+        
           
           {/* Enhanced Header with Store Status */}
           <div className={`bg-gradient-to-r ${storeStatus.isOpen ? 'from-green-500/20 via-green-500/10' : 'from-red-500/20 via-red-500/10'} to-transparent rounded-2xl border border-border p-6 md:p-8`}>
@@ -467,7 +476,88 @@ export default function Settings() {
             {/* General Settings */}
             <TabsContent value="general" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
+                <Card>
+  <CardHeader>
+    <CardTitle>Store Hours</CardTitle>
+    <CardDescription>
+      Configure store operating hours
+    </CardDescription>
+  </CardHeader>
+
+  <CardContent className="space-y-4">
+    <div className="grid grid-cols-2 gap-4">
+      <div>
+        <Label>Opening Time</Label>
+        <Input
+          type="time"
+          value={storeStatus.openingTime}
+          onChange={(e) =>
+            setStoreStatus(prev => ({
+              ...prev,
+              openingTime: e.target.value
+            }))
+          }
+        />
+      </div>
+
+      <div>
+        <Label>Closing Time</Label>
+        <Input
+          type="time"
+          value={storeStatus.closingTime}
+          onChange={(e) =>
+            setStoreStatus(prev => ({
+              ...prev,
+              closingTime: e.target.value
+            }))
+          }
+        />
+      </div>
+    </div>
+
+    <div className="flex items-center justify-between">
+      <Label>Holiday Mode</Label>
+
+      <Switch
+        checked={storeStatus.holidayMode}
+        onCheckedChange={(checked) =>
+          setStoreStatus(prev => ({
+            ...prev,
+            holidayMode: checked
+          }))
+        }
+      />
+    </div>
+
+    {!storeStatus.isOpen && (
+      <Input
+        placeholder="Reason for closing"
+        value={storeStatus.temporaryCloseReason}
+        onChange={(e) =>
+          setStoreStatus(prev => ({
+            ...prev,
+            temporaryCloseReason: e.target.value
+          }))
+        }
+      />
+    )}
+
+    <Button
+      onClick={async () => {
+        await apiService.updateStoreStatus(storeStatus);
+
+        toast({
+          title: "Success",
+          description: "Store hours updated"
+        });
+      }}
+    >
+      <Save className="h-4 w-4 mr-2" />
+      Save Store Hours
+    </Button>
+  </CardContent>
+</Card>
+
                 {/* Company Information */}
                 <Card className="bg-card border-border">
                   <CardHeader className="pb-4">
