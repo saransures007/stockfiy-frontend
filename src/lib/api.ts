@@ -20,6 +20,11 @@ import type {
   ReturnsResponse,
 } from "@/types/return";
 
+export interface PetpoojaAuthResponse {
+  authenticated: boolean;
+  message?: string;
+}
+
 // Additional types for sales and customers
 export interface Customer {
   _id: string;
@@ -98,6 +103,7 @@ export interface CustomersResponse {
 
 // API response types
 export interface ApiResponse<T = any> {
+  authenticated: boolean;
   success: boolean;
   message: string;
   data?: T;
@@ -199,8 +205,247 @@ export interface RegisterRequest {
   password: string;
 }
 
+export interface PurchaseExtractedItem {
+  rawName: string;
+  quantity: number;
+  unit?: string;
+  rate?: number;
+  amount?: number;
+  barcode?: string;
+  mrp?: number;
+}
+
+export interface PetpoojaItem {
+
+  id: number;
+
+  itemName: string;
+
+  description?: string;
+
+  itemCode?: string;
+
+  hsn?: string;
+
+  mrp: number;
+
+  purchaseRate: number;
+
+  salesRate: number;
+
+  barcode?: string;
+
+  group?: string;
+
+  category?: string;
+
+  stock?: number;
+
+  isActive?: boolean;
+
+}
+
+export interface PetpoojaSearchResponse {
+
+  success: boolean;
+
+  data: PetpoojaItem[];
+
+  pagination?: {
+
+    total: number;
+
+    count: number;
+
+    perPage: number;
+
+    currentPage: number;
+
+    totalPages: number;
+
+    links?: {
+      next?: string | null;
+    };
+
+  };
+
+}
+export interface ExtractedPurchaseInvoice {
+  invoiceNumber?: string;
+  invoiceDate?: string;
+  supplier?: string;
+  items: PurchaseExtractedItem[];
+  subtotal?: number;
+  tax?: number;
+  grandTotal?: number;
+}
+// ============================================================
+// PETPOOJA PURCHASE TYPES
+// ============================================================
+
+export interface PetpoojaOtpRequest {
+  user_contact: string;
+}
+
+export interface PetpoojaOtpVerifyRequest {
+  otp: string;
+  user: string;
+  user_contact: string;
+}
+
+export interface PetpoojaInvoice {
+  id: string;
+  [key: string]: any;
+}
+
+export interface PetpoojaInvoiceDetail {
+  [key: string]: any;
+}
+
 // API service class
 class ApiService {
+
+  // ============================================================
+// PETPOOJA MASTER DATA
+// ============================================================
+
+async getPetpoojaMasterData() {
+  return this.request<any>(
+    "/petpooja/master-data"
+  );
+}
+
+
+// ============================================================
+// CREATE PETPOOJA ITEM
+// ============================================================
+
+async createPetpoojaItem(
+  payload: any
+) {
+  return this.request<any>(
+    "/petpooja/items",
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type":
+          "application/json",
+      },
+
+      body:
+        JSON.stringify(
+          payload
+        ),
+    }
+  );
+}
+
+async getPetpoojaSuppliers(
+  page = 1,
+  perPage = 100
+) {
+  return this.request<any>(
+    `/petpooja/suppliers?page=${page}&perPage=${perPage}`
+  );
+}
+
+// async getPetpoojaSuppliers(params?: {
+//   page?: number;
+//   perPage?: number;
+//   search?: string;
+// }) {
+//   const query =
+//     new URLSearchParams();
+
+//   if (params?.page !== undefined) {
+//     query.set(
+//       "page",
+//       String(params.page)
+//     );
+//   }
+
+//   if (params?.perPage !== undefined) {
+//     query.set(
+//       "perPage",
+//       String(params.perPage)
+//     );
+//   }
+
+//   if (params?.search) {
+//     query.set(
+//       "search",
+//       params.search
+//     );
+//   }
+
+//   return this.request<any>(
+//     `/petpooja/suppliers${
+//       query.toString()
+//         ? `?${query.toString()}`
+//         : ""
+//     }`
+//   );
+// }
+
+// async searchPetpoojaProducts(
+//   query: string,
+//   page = 1,
+//   perPage = 20
+// ): Promise<PetpoojaSearchResponse> {
+//   const params = new URLSearchParams({
+//     q: query.trim(),
+//     page: String(page),
+//     perPage: String(perPage),
+//   });
+
+//   const response = await this.request<PetpoojaSearchResponse>(
+//     `/petpooja/items/search?${params.toString()}`,
+//     {
+//       method: "GET",
+//     }
+//   );
+
+//   return {
+//     success: response.success,
+//     data: Array.isArray(response.data)
+//       ? response.data
+//       : [],
+//     pagination: response.data?.pagination,
+//   } as PetpoojaSearchResponse;
+// }
+
+// ✅ ITEMS LIST (with filters)
+async getItems(params?: {
+  page?: number;
+  perPage?: number;
+  categoryId?: string;
+  groupId?: string;
+  itemName?: string;
+}) {
+  const query = new URLSearchParams(
+    Object.entries(params || {}).reduce(
+      (acc, [key, val]) => {
+        if (
+          val !== undefined &&
+          val !== ""
+        ) {
+          acc[key] = String(val);
+        }
+
+        return acc;
+      },
+      {} as Record<string, string>
+    )
+  ).toString();
+
+  return this.request<any>(
+    `/petpooja/items-search${
+      query ? `?${query}` : ""
+    }`
+  );
+}
+
     getTrendingProductRequests() {
         throw new Error('Method not implemented.');
     }
@@ -294,8 +539,260 @@ async updateStoreStatus(data: {
   });
 }
 
+async extractPurchaseInvoice(
+  file: File
+): Promise<ApiResponse<ExtractedPurchaseInvoice>> {
+  const formData = new FormData();
+
+  formData.append("pdf", file);
+
+  return this.request<ExtractedPurchaseInvoice>(
+    "/purchases/extract",
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+}
+
 async getStoreStatus(): Promise<ApiResponse<any>> {
     return this.request('/settings/store-status', { method: 'GET' });
+}
+
+
+
+// ============================================================
+// PETPOOJA AUTH
+// ============================================================
+
+async requestPetpoojaOtp(
+  user_contact: string
+): Promise<ApiResponse<any>> {
+
+  return this.request(
+    "/petpooja/auth/request-otp",
+    {
+      method: "POST",
+
+      body: JSON.stringify({
+        user_contact,
+      }),
+    }
+  );
+}
+// ============================================================
+// PETPOOJA PURCHASE MAPPING
+// ============================================================
+
+async mapPetpoojaPurchase(
+  data: any
+): Promise<ApiResponse<any>> {
+
+  return this.request(
+    "/petpooja/purchases/map",
+    {
+      method: "POST",
+
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+
+// ============================================================
+// CONFIRM PETPOOJA PRODUCT MAPPING
+// ============================================================
+
+async confirmPetpoojaMapping(
+  data: {
+    invoiceProduct: any;
+    petpoojaItemIds: number[];
+    supplierPartyCode?: string;
+    supplierId?: number | null;
+  }
+): Promise<ApiResponse<any>> {
+
+  return this.request(
+    "/petpooja/purchases/map/confirm",
+    {
+      method: "POST",
+
+      body:
+        JSON.stringify(
+          data
+        ),
+    }
+  );
+}
+// async searchPetpoojaItems(
+//   query: string,
+//   page = 1,
+//   perPage = 20
+// ): Promise<PetpoojaSearchResponse> {
+
+//   const params =
+//     new URLSearchParams({
+//       q: query.trim(),
+//       page: String(page),
+//       perPage: String(perPage),
+//     });
+
+
+//   console.log(
+//     "🔍 Searching Petpooja items:",
+//     query
+//   );
+
+
+//   const response =
+//     await this.request<PetpoojaItem[]>(
+//       `/petpooja/items/search?${params.toString()}`,
+//       {
+//         method: "GET",
+//       }
+//     );
+
+
+//   return {
+//     success:
+//       response.success,
+
+//     data:
+//       Array.isArray(response.data)
+//         ? response.data
+//         : [],
+
+//     pagination:
+//       response.pagination,
+//   };
+
+// }
+
+async verifyPetpoojaOtp(
+  data: PetpoojaOtpVerifyRequest
+): Promise<ApiResponse<any>> {
+
+  return this.request(
+    "/petpooja/auth/verify-otp",
+    {
+      method: "POST",
+
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+
+async checkPetpoojaAuth(): Promise<ApiResponse<PetpoojaAuthResponse>> {
+  return this.request<PetpoojaAuthResponse>(
+    "/petpooja/auth/status",
+    {
+      method: "GET",
+    }
+  );
+}
+
+// ============================================================
+// PETPOOJA PURCHASES
+// ============================================================
+
+async getPetpoojaPurchases(
+  page = 1,
+  pageSize = 10
+): Promise<ApiResponse<any>> {
+
+  return this.request(
+    `/petpooja/purchases?page=${page}&page_size=${pageSize}`,
+    {
+      method: "GET",
+    }
+  );
+}
+
+
+// ============================================================
+// PETPOOJA STOCK ADJUSTMENT
+// ============================================================
+
+async updateStockAdjustment(
+  stockAdjustmentId: number,
+  payload: any
+): Promise<ApiResponse<any>> {
+  return this.request(
+    `/petpooja/stock-adjustments/${stockAdjustmentId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }
+  );
+}
+
+async createStockAdjustment(
+  payload: {
+    date?: string;
+    notes?: string;
+    status?: string;
+    reasonId: number;
+    attachment?: string;
+    lineItems: Array<{
+      itemId: number;
+      batchId?: number | null;
+      locationId?: number | null;
+      existingQuantity: number;
+      newQuantityOnHand: number;
+      adjustedQuantity?: number;
+      unitId?: number | null;
+      serialNumbers?: any[];
+      serialNumberIds?: any[];
+    }>;
+  }
+): Promise<ApiResponse<any>> {
+
+  return this.request(
+    "/petpooja/stock-adjustments",
+    {
+      method: "POST",
+
+      body:
+        JSON.stringify(
+          payload
+        ),
+    }
+  );
+}
+
+
+// ============================================================
+// CREATE PURCHASE BILL
+// ============================================================
+
+async createPurchaseBill(
+  payload: any
+): Promise<ApiResponse<any>> {
+
+  return this.request(
+    "/petpooja/bills",
+    {
+      method: "POST",
+
+      body:
+        JSON.stringify(
+          payload
+        ),
+    }
+  );
+}
+
+async getPetpoojaPurchaseDetail(
+  invoiceId: string
+): Promise<ApiResponse<any>> {
+
+  return this.request(
+    `/petpooja/purchases/${invoiceId}`,
+    {
+      method: "GET",
+    }
+  );
 }
 
 async updateNotificationSettings(data: any): Promise<ApiResponse<any>> {

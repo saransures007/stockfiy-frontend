@@ -29,6 +29,8 @@ import NotFound from "@/pages/NotFound";
 import Aboutus from "./pages/Aboutus";
 import Contactus from "./pages/Contactus";
 import AuthCallback from "@/pages/AuthCallback";
+import Purchase from "@/pages/PetpoojaPurchase";
+
 
 function App() {
   return (
@@ -63,6 +65,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/purchase" element={<Purchase />} />
               <Route
                 path="/categories"
                 element={
@@ -95,6 +98,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/returns"
                 element={

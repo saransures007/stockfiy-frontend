@@ -66,6 +66,7 @@ const navItems: NavItem[] = [
     route: "/products",
     children: [
       { label: "Stock Management", route: "/products" },
+      { label: "Purchase", route: "/purchase" },
       { label: "Categories", route: "/categories" },
     ],
   },
